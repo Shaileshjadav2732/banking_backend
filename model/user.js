@@ -1,13 +1,13 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose from "mongoose";
 
-const schema=new mongoose.Schema({
-   _id:{
-      type:Number,
+const schema = new mongoose.Schema({
+   _id: {
+      type: Number,
       default: () => Math.floor(Math.random() * 90000000000) + 10000000000, //this is for Generates a random 11-digit number
    },
-   deviceDetails:{
-      type:Object,
-      required:true
+   deviceDetails: {
+      type: Object,
+      required: true
    },
    image: {
       type: String,
