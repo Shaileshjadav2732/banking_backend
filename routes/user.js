@@ -14,7 +14,7 @@ router.post("/login",login)
 router.post("/verifyotp", verifyOtp);
 router.post("/sendotp",sendOtp);
 
-router.post("/completeProfile", isAuth, completeProfile);
+router.post("/completeProfile",completeProfile);
 router.get("/getProfileDetails/:userId",isAuth,getProfileDetails);
 
 router.get("/getProfileDetailsUsingEmail/:email", getProfileDetailsUsingEmail);
