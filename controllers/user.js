@@ -65,7 +65,7 @@ export const sendOtp = async ({ _id, email }, res, next) => {
          from: "banking@gmail.com",
          to: email,
          subject: "Verify Your Email",
-         html: `<p style="color: red;"><b>${otp}</b> in the app to verify your email address and complete the verification</p>`,
+         html: `<p style="color:white;"><b style="color:red">${otp}</b> in the app to verify your email address and complete the verification</p>`,
       };
 
       const saltRounds = 10;
@@ -91,55 +91,73 @@ export const sendOtp = async ({ _id, email }, res, next) => {
    }
 };
 
-export const verifyOtp = async (req, res, next) => {
+export const verifyotp = async (req, res, next) => {
+   const errors = validationResult(req);
+
+   if (!errors.isEmpty()) {
+      console.log(errors);
+      const error = new Error("Validation Failed!");
+      error.statusCode = 422;
+      error.data = errors.array();
+      return next(error);
+   }
+
    try {
-      const { otp, userId } = req.body;
+      let { otp, userId } = req.body;
+      console.log(`OTP: ${otp}, User ID: ${userId}`); // Log received data
 
       if (!userId || !otp) {
-         return next(new ErrorHandler("Empty OTP details are not allowed!", 400));
+         return next(new ErrorHandler("Empty otp details are not allowed!", 400));
+      } else {
+         const OtpVerificationRecords = await OtpVerification.find({ userId });
+         console.log(`OtpVerificationRecords: ${OtpVerificationRecords}`); // Log OTP records
+
+         if (!OtpVerificationRecords || OtpVerificationRecords.length === 0) {
+            return next(
+               new ErrorHandler(
+                  "Account record doesn't exist or has been verified already. Please sign up or logIn!",
+                  400
+               )
+            );
+         } else {
+            const { expiresAt, otp: hashedOtp } = OtpVerificationRecords[0];
+            console.log(`Expires At: ${expiresAt}, Hashed OTP: ${hashedOtp}`); // Log expiry and hashed OTP
+
+            if (expiresAt < Date.now()) {
+               await OtpVerificationRecords.deleteMany({ userId });
+               return next(
+                  new ErrorHandler("Code Has Expired, Please Try again!", 400)
+               );
+            } else {
+               const validOtp = await bcrypt.compare(otp, hashedOtp);
+               console.log(`Is OTP valid: ${validOtp}`); // Log OTP validation result
+
+               if (!validOtp) {
+                  return next(new ErrorHandler("Invalid Code Passed!", 400));
+               } else {
+                  const sentCookie = jwt.sign({ _id: userId }, "dbdhbzssm");
+
+                  res
+                     .status(200)
+                     .cookie("userId", sentCookie, {
+                        httpOnly: true,
+                        maxAge: 3600 * 1000,
+                     })
+                     .json({
+                        success: true,
+                        message: "cookie sent & userVerified",
+                     });
+
+                  await User.updateOne({ _id: userId }, { verified: true });
+                  await OtpVerificationRecords  .deleteOne({ userId });
+               }
+            }
+         }
       }
-
-      const otpVerificationRecords = await otpVerification.find({ userId });
-
-      if (otpVerificationRecords.length === 0) {
-         return next(new ErrorHandler("Account record doesn't exist or has been verified already. Please sign up or log in!", 400));
-      }
-
-      const { expiresAt, otp: hashedOtp } = otpVerificationRecords[0];
-
-      if (expiresAt < Date.now()) {
-         await otpVerification.deleteMany({ userId });
-         return next(new ErrorHandler("Code has expired, please try again!", 400));
-      }
-
-      const validOtp = await bcrypt.compare(otp, hashedOtp);
-
-      if (!validOtp) {
-         return next(new ErrorHandler("Invalid code passed!", 400));
-      }
-
-      const token = jwt.sign({ _id: userId }, "JWT_SECRET");
-
-      res.status(200)
-         .cookie("userId", token, {
-            httpOnly: true,
-            maxAge: 3600 * 1000,
-         })
-         .json({
-            success: true,
-            message: "Cookie sent & user verified",
-         });
-
-      await User.updateOne({ _id: userId }, { verified: true });
-      await otpVerification.deleteOne({ userId });
    } catch (error) {
-      console.error('OTP Verification Error:', error);
       next(error);
    }
 };
-
-
-
 export const login = async (req, res, next) => {
    const errors = validationResult(req);
    if (!errors.isEmpty()) {

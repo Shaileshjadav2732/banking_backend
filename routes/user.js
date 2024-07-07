@@ -1,6 +1,6 @@
 import { completeProfile, getProfileDetails, getProfileDetailsUsingEmail, login, register, sendOtp } from "../controllers/user.js";
 import express from "express";
-import { verifyOtp } from "../controllers/user.js";
+import{ verifyotp}  from "../controllers/user.js";
 import { isAuth } from "../middleware/is-auth.js";
 
 const router = express.Router();
@@ -11,7 +11,7 @@ router.post("/register", register);
 
 // router.post("/verifyotp", verifyotp);
 router.post("/login",login)
-router.post("/verifyotp", verifyOtp);
+router.post("/verifyotp", verifyotp);
 router.post("/sendotp",sendOtp);
 
 router.post("/completeProfile",completeProfile);
