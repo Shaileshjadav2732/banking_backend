@@ -6,6 +6,7 @@ import { otpVerification } from "../model/otpver.js";
 import transporter from "../app.js";
 import { validationResult } from "express-validator";
 
+
 export const register = async (req, res, next) => {
    const errors = validationResult(req);
 
@@ -16,17 +17,41 @@ export const register = async (req, res, next) => {
       error.data = errors.array();
       return next(error);
    }
+
    try {
       const { deviceDetails, phoneNo, email, password } = req.body;
 
-      console.log(phoneNo);
+      // Signature Generation using crypto package!
+      let { privateKey } = req.body;
+
+      privateKey = crypto.createPrivateKey({
+         key: Buffer.from(privateKey, "base64"),
+         type: "pkcs8",
+         format: "der",
+      });
+
+      console.log(phoneNo.toString());
+      const sign = crypto.createSign("SHA256");
+      sign.update(phoneNo.toString());
+      sign.end();
+      const signature = sign.sign(privateKey).toString("base64");
+
       let user = await User.findOne({ email });
-      if (user) return next(new ErrorHandler("User Already Exist", 400));
 
-      const hashedPassword = await bcrypt.hash(password, 10);
+      if (user) return next(new ErrorHandler("user already exist!", 400));
 
-      if (!deviceDetails.id || !deviceDetails.os || !deviceDetails.version || !deviceDetails.manufacturer || !deviceDetails.model) {
-         return next(new ErrorHandler("Please provide valid device details!", 400));
+      const hashedpassword = await bcrypt.hash(password, 10);
+
+      if (
+         !deviceDetails.id ||
+         !deviceDetails.os ||
+         !deviceDetails.version ||
+         !deviceDetails.manufacturer ||
+         !deviceDetails.model
+      ) {
+         return next(
+            new ErrorHandler("please provide valid device details!", 400)
+         );
       }
 
       const hashedDid = await bcrypt.hash(deviceDetails.id, 10);
@@ -38,55 +63,71 @@ export const register = async (req, res, next) => {
       );
       const hashedDmodel = await bcrypt.hash(deviceDetails.model, 10);
 
+      // Generating Upi Id
       const upiId = phoneNo.toString() + "@xyzbanking";
 
-      console.log(upiId);
-
       user = await User.create({
-         deviceDetails: { id: hashedDid, os: hashedDos, version: hashedDversion, manufacturer: hashedDmanufacturer, model: hashedDmodel },
+         deviceDetails: {
+            id: hashedDid,
+            os: hashedDos,
+            version: hashedDversion,
+            manufacturer: hashedDmanufacturer,
+            model: hashedDmodel,
+         },
          email,
          phone: phoneNo,
          upiId: upiId,
-         password: hashedPassword,
+         password: hashedpassword,
          verified: false,
-      }).then((result) => sendOtp(result, res, next));
-
-
+      }).then((result) => {
+         console.log(result);
+         // const d = (req.session.myData = result._id);
+         // console.log(req.session.myData);
+         sendOtp(result, res, next, signature);
+         // console.log(d);
+      });
    } catch (error) {
-      console.error('Registration Error:', error);
       next(error);
    }
 };
 
-export const sendOtp = async ({ _id, email }, res, next) => {
+//send otp verification email
+export const sendOtp = async ({ _id, email }, res, next, signature) => {
    try {
       const otp = `${Math.floor(100000 + Math.random() * 900000)}`;
       const mailOptions = {
          from: "banking@gmail.com",
          to: email,
          subject: "Verify Your Email",
-         html: `<p style="color:white;"><b style="color:red">${otp}</b> in the app to verify your email address and complete the verification</p>`,
+         html: ` <p style={{ color: "red" }}>
+          <b>${otp}</b> in the app to verify your email address and complete the verification
+        </p>`,
       };
 
+      //hash otp
       const saltRounds = 10;
       const hashedOtp = await bcrypt.hash(otp, saltRounds);
 
-      await otpVerification.create({
+      await OtpVerification.create({
          userId: _id,
          otp: hashedOtp,
          createdAt: Date.now(),
-         expiresAt: Date.now() + 60 * 60 * 1000
+         expiresAt: Date.now() + 3600000,
       });
 
       await transporter.sendMail(mailOptions);
 
       res.status(250).json({
          status: "PENDING",
-         message: "Verification",
-         data: { userId: _id, email }
+         message: "Verification otp email sent",
+         data: {
+            userId: _id,
+            email,
+            // signature sent to user
+            signature,
+         },
       });
    } catch (error) {
-      console.error('OTP Sending Error:', error);
       next(error);
    }
 };
@@ -104,43 +145,43 @@ export const verifyotp = async (req, res, next) => {
 
    try {
       let { otp, userId } = req.body;
-      console.log(`OTP: ${otp}, User ID: ${userId}`); // Log received data
 
       if (!userId || !otp) {
          return next(new ErrorHandler("Empty otp details are not allowed!", 400));
       } else {
          const OtpVerificationRecords = await OtpVerification.find({ userId });
-         console.log(`OtpVerificationRecords: ${OtpVerificationRecords}`); // Log OTP records
 
-         if (!OtpVerificationRecords || OtpVerificationRecords.length === 0) {
+
+         if (!OtpVerificationRecords) {
             return next(
                new ErrorHandler(
-                  "Account record doesn't exist or has been verified already. Please sign up or logIn!",
+                  "Account record doesn't exist or has been verified already . Please sign up or logIn!",
                   400
                )
             );
          } else {
-            const { expiresAt, otp: hashedOtp } = OtpVerificationRecords[0];
-            console.log(`Expires At: ${expiresAt}, Hashed OTP: ${hashedOtp}`); // Log expiry and hashed OTP
+            const { expiresAt } = OtpVerificationRecords[0];
+            const hashedOtp = OtpVerificationRecords[0].otp;
 
             if (expiresAt < Date.now()) {
-               await OtpVerificationRecords.deleteMany({ userId });
+               //for delete expiried otp
+               await OtpVerification.deleteMany({ userId });
                return next(
-                  new ErrorHandler("Code Has Expired, Please Try again!", 400)
+                  new ErrorHandler("Code Has Expired , Please Try again!", 400)
                );
             } else {
                const validOtp = await bcrypt.compare(otp, hashedOtp);
-               console.log(`Is OTP valid: ${validOtp}`); // Log OTP validation result
 
                if (!validOtp) {
                   return next(new ErrorHandler("Invalid Code Passed!", 400));
                } else {
+                  //success
                   const sentCookie = jwt.sign({ _id: userId }, "dbdhbzssm");
 
                   res
                      .status(200)
                      .cookie("userId", sentCookie, {
-                        httpOnly: true,
+                        httpOnly: "true",
                         maxAge: 3600 * 1000,
                      })
                      .json({
@@ -149,7 +190,8 @@ export const verifyotp = async (req, res, next) => {
                      });
 
                   await User.updateOne({ _id: userId }, { verified: true });
-                  await OtpVerificationRecords  .deleteOne({ userId });
+                  await OtpVerification.deleteOne({ userId });
+                  await req.session.destroy();
                }
             }
          }
@@ -158,8 +200,11 @@ export const verifyotp = async (req, res, next) => {
       next(error);
    }
 };
+
+// Login
 export const login = async (req, res, next) => {
    const errors = validationResult(req);
+
    if (!errors.isEmpty()) {
       console.log(errors);
       const error = new Error(errors.errors[0].msg);
@@ -167,67 +212,66 @@ export const login = async (req, res, next) => {
       error.data = errors.array();
       return next(error);
    }
-
-
    const { email, password } = req.body;
+
    try {
-      const user = await User.findOne({ email: email })
+
+      const user = await User.findOne({ email: email });
+
       const isEqual = await bcrypt.compare(password, user.password);
+
       if (!isEqual) {
          const error = new Error("Incorrect Password!");
          error.statusCode = 401;
-
          return next(error);
       }
+
       const token = jwt.sign(
          {
             email: user.email,
             userId: user._id.toString(),
-         }, "huheughie", { expiresIn: "1h" }
+         },
+         "somesupersecretsecret",
+         { expiresIn: "1h" }
       );
 
       res.status(200).json({
          token: token,
          userId: user._id.toString(),
-         message: "Login Successfully!",
+         message: "Login Sucessfully!",
       });
-
-
-   } catch (error) {
-
-      if (!error.statusCode) {
-         error.statusCode = 500;
-
-      } next(error);
-
+   } catch (err) {
+      if (!err.statusCode) {
+         err.statusCode = 500;
+      }
+      next(err);
    }
-
 };
 
-
+// Complete Profile
 export const completeProfile = async (req, res, next) => {
-
    const errors = validationResult(req);
+
    if (!errors.isEmpty()) {
       console.log(errors);
-      const error = new Error("validation Failed!");
+      const error = new Error("Validation Failed!");
       error.statusCode = 422;
       error.data = errors.array();
       return next(error);
    }
-   
+
    if (!req.file) {
       const error = new Error("No image provided.");
       error.statusCode = 422;
       return next(error);
    }
-   
-   const imageUrl = req.file.path.replace("\\", "/");
-   const { userId, name, address, dob, bank, upipin } = req.body;
 
+   const { userId, name, address, dob, bank, upipin } = req.body;
+   const imageUrl = req.file.path.replace("\\", "/");
 
    try {
       const hashedUPI = await bcrypt.hash(upipin, 10);
+
       const user = await User.findOne({ _id: userId });
 
       user.name = name;
@@ -239,7 +283,7 @@ export const completeProfile = async (req, res, next) => {
       user.accountNum;
       const result = await user.save();
       res.status(201).json({ message: "Profile complete!", result: result });
-   } catch (error) {
+   } catch (err) {
       if (!err.statusCode) {
          err.statusCode = 500;
       }
@@ -247,44 +291,48 @@ export const completeProfile = async (req, res, next) => {
    }
 };
 
-// gives profile details using user id
-
+// Gives user Profile details using user id
 export const getProfileDetails = (req, res, next) => {
    const userId = req.params.userId;
 
-   User.findOne({ _Id: userId }).then((user) => {
-      if (!user) {
-         const error = new Error("User does nor exist!");
-         error.status = 404;
-         return next(error);
-      }
-      res.status(200).json({ message: "User details fetched!", user: user });
+   User.findOne({ _id: userId })
+      .then((user) => {
+         if (!user) {
+            const error = new Error("User does not exits!");
+            error.status = 404;
+            return next(error);
+         }
 
-   }).catch((err) => {
-      if (!err.statusCode) {
-         err.statusCode = 500;
-      }
-      next(err);
-   })
+         res.status(200).json({ message: "User details fetched!", user: user });
+      })
+      .catch((err) => {
+         if (!err.statusCode) {
+            // Server side error
+            err.statusCode = 500;
+         }
+         next(err);
+      });
+};
 
-}
-
-
+// Gives user Profile details using email
 export const getProfileDetailsUsingEmail = (req, res, next) => {
    const email = req.params.email;
 
-   User.findOne({ email: email }).then((user) => {
-      if (!user) {
-         const error = new Error("User does not exist!");
-         error.status = 404;
-         return next(error);
-      }
-      res.status(200).json({ message: "User details fetched!", user: user });
+   User.findOne({ email: email })
+      .then((user) => {
+         if (!user) {
+            const error = new Error("User does not exits!");
+            error.status = 404;
+            return next(error);
+         }
 
-   }).catch((err) => {
-      if (!err.statusCode) {
-         err.statusCode = 500;
-      }
-      next(err);
-   });
-};
+         res.status(200).json({ message: "User details fetched!", user: user });
+      })
+      .catch((err) => {
+         if (!err.statusCode) {
+            // Server side error
+            err.statusCode = 500;
+         }
+         next(err);
+      });
+}
