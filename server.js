@@ -1,24 +1,19 @@
+import { app } from "./app.js";
+import { connDb } from "./data/database.js";
+import { config } from "dotenv";
 
-import { config } from 'dotenv';
-import {connectDB }from './data/database.js';
-import {app} from "./app.js"
+const port = 5000;
 
+connDb();
 
-   
+app.listen(port, () => {
+   console.log(`server is working! on port ${port}`);
+});
+
+app.get("/", (req, res) => {
+   res.send("Hello Man!");
+});
 
 config({
    path: "./data/config.env",
-});
-
-
-const PORT = process.env.PORT || 3000;
-
-connectDB();
-
-app.get('/', (req, res) => {
-   res.send('Hello World!');
-});
-
-app.listen(process.env.PORT, () => {
-   console.log(`Banking app listening at http://localhost:${PORT}`);
 });
