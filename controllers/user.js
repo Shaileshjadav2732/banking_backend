@@ -1,12 +1,55 @@
+import crypto from "crypto";
+
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { User } from "../model/user.js";
-import ErrorHandler from "../middleware/errror.js";
-import { otpVerification } from "../model/otpver.js";
-import transporter from "../app.js";
 import { validationResult } from "express-validator";
 
+import { transporter } from "../app.js";
+import { User } from "../model/user.js";
+import { OtpVerification } from "../model/otpver.js";
+import ErrorHandler from "../middlewares/error.js";
 
+//Genration of keyPairs
+export const generateKeyPairs = (req, res, next) => {
+   const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
+      // key's size
+      modulusLength: 2048,
+      publicKeyEncoding: {
+         type: "spki",
+         format: "der",
+      },
+      privateKeyEncoding: {
+         type: "pkcs8",
+         format: "der",
+      },
+   });
+
+   res.status(201).json({
+      publicKey: publicKey.toString("base64"),
+      privateKey: privateKey.toString("base64"),
+   });
+};
+
+// Verification of sent data with signature
+export const verifySign = (req, res, next) => {
+   let { phoneNo, publicKey, signature } = req.body;
+
+   publicKey = crypto.createPublicKey({
+      key: Buffer.from(publicKey, "base64"),
+      type: "spki",
+      format: "der",
+   });
+
+   const verify = crypto.createVerify("SHA256");
+   verify.update(phoneNo.toString());
+   verify.end();
+
+   let result = verify.verify(publicKey, Buffer.from(signature, "base64"));
+
+   res.status(200).json({ result });
+};
+
+// Register
 export const register = async (req, res, next) => {
    const errors = validationResult(req);
 
@@ -92,7 +135,7 @@ export const register = async (req, res, next) => {
 };
 
 //send otp verification email
-export const sendOtp = async ({ _id, email }, res, next, signature) => {
+const sendOtp = async ({ _id, email }, res, next, signature) => {
    try {
       const otp = `${Math.floor(100000 + Math.random() * 900000)}`;
       const mailOptions = {
@@ -335,4 +378,4 @@ export const getProfileDetailsUsingEmail = (req, res, next) => {
          }
          next(err);
       });
-}
+};
