@@ -21,24 +21,24 @@ app.use(express.json());
 app.use(cookieParser());
 
 const storage = multer.diskStorage({
-   destination: function (req, file, cb) {
-      cb(null, "images");
-   },
-   filename: function (req, file, cb) {
-      cb(null, uuid());
-   },
+  destination: function (req, file, cb) {
+    cb(null, "images");
+  },
+  filename: function (req, file, cb) {
+    cb(null, uuid());
+  },
 });
 
 const fileFilter = (req, file, cb) => {
-   if (
-      file.mimetype === "image/png" ||
-      file.mimetype === "image/jpg" ||
-      file.mimetype === "image/jpeg"
-   ) {
-      cb(null, true);
-   } else {
-      cb(null, false);
-   }
+  if (
+    file.mimetype === "image/png" ||
+    file.mimetype === "image/jpg" ||
+    file.mimetype === "image/jpeg"
+  ) {
+    cb(null, true);
+  } else {
+    cb(null, false);
+  }
 };
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -48,34 +48,34 @@ app.use("/images", express.static(path.join(__dirname, "images")));
 
 
 app.use((err, req, res, next) => {
-   if (err instanceof multer.MulterError) {
-      res.status(400).json({ error: 'File upload error', message: err.message });
-   } else {
-      next(err);
-   }
+  if (err instanceof multer.MulterError) {  
+    res.status(400).json({ error: 'File upload error', message: err.message });
+  } else {
+    next(err);
+  }
 });
 
 config({
-   path: "./data/config.env",
+  path: "./data/config.env",
 });
 
 //for deployment
 app.use(
-   cors({
-      origin: process.env.FRONTEND_URL || "*", //we can give specific domain , that only take accept the request from that specific domain
-      methods: ["GET", "PUT", "DELETE", "POST", "PATCH"],
-      credentials: true, //for get header details like cookie...
-      allowedHeaders: ["Content-Type", "Authorization"],
-   })
+  cors({
+    origin: process.env.FRONTEND_URL || "*", //we can give specific domain , that only take accept the request from that specific domain
+    methods: ["GET", "PUT", "DELETE", "POST", "PATCH"],
+    credentials: true, //for get header details like cookie...
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
 );
 
 // Set up express-session middleware
 app.use(
-   session({
-      secret: "parth", // Use a random string for better security
-      resave: false,
-      saveUninitialized: false,
-   })
+  session({
+    secret: "parth", // Use a random string for better security
+    resave: false,
+    saveUninitialized: false,
+  })
 );
 
 //made prefix route so now we not have to write again and again same path for user/...
@@ -84,12 +84,12 @@ app.use("/admin", adminRouter);
 app.use("/transaction", transactionRoutes);
 
 export const transporter = nodemailer.createTransport({
-   service: "Gmail",
-   port: 587,
-   auth: {
-      user: process.env.SMTP_EMAIL,
-      pass: process.env.SMTP_PASSWORD,
-   },
+  service: "Gmail",
+  port: 587,
+  auth: {
+    user: process.env.SMTP_EMAIL,
+    pass: process.env.SMTP_PASSWORD,
+  },
 });
 
 //using error middleware

@@ -1,16 +1,9 @@
 {
-  "name": "bank_backend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "author": "Shailesh",
-  "license": "ISC",
-
   "dependencies": {
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
@@ -29,7 +22,7 @@
     "uuid": "^9.0.1",
     "uuidv4": "^6.2.13"
   },
-   "devDependencies": {
+  "devDependencies": {
     "nodemon": "^3.1.0"
   }
 }

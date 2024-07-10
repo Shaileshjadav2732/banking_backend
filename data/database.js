@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
-export  const connectDB = () => {
-   mongoose.connect(process.env.DATABASE_LINK, { dbName: "Bank" })
-      .then((c) => console.log("database Connected"))
-      .catch((e)=>console.log(e))
 
-}
+export const connDb = () => {
+
+  mongoose
+    .connect(process.env.DATABASE_LINK, { dbName: "bankingSystemDb" })
+    .then((c) => console.log(`DataBase Connected!`))
+    .catch((e) => console.log(e));
+};
