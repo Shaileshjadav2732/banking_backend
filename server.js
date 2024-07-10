@@ -7,7 +7,7 @@ import { config } from "dotenv";
 connDb();
 
 app.listen(process.env.PORT, () => {
-  console.log(`server is working! on port ${port}`);
+  console.log(`server is working!`);
 });
 
 app.get("/", (req, res) => {
