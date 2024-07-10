@@ -10,6 +10,7 @@
   },
   "author": "Shailesh",
   "license": "ISC",
+
   "dependencies": {
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
@@ -27,5 +28,8 @@
     "nodemailer": "^6.9.13",
     "uuid": "^9.0.1",
     "uuidv4": "^6.2.13"
+  },
+   "devDependencies": {
+    "nodemon": "^3.1.0"
   }
 }
