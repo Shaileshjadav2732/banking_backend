@@ -13,11 +13,12 @@ config({
 
 // Declare the nodemailer that we are using brevo(speciflying all brevo credentials) as our server to send emails
 let transporter = nodemailer.createTransport({
-  service: "Gmail",
+  host: "smtp-relay.brevo.com",
   port: 587,
+  secure: false, // true for 465, false for other ports
   auth: {
-    user: process.env.SMTP_EMAIL,
-    pass: process.env.SMTP_PASSWORD,
+    user: process.env.Brevo_USER, // generated ethereal user
+    pass: process.env.Brevo_PASSWORD, // generated ethereal password
   },
 });
 
@@ -240,7 +241,7 @@ export const makeTranscationUsingPhoneNo = async (req, res, next) => {
       transaction.title = title;
       transaction.amount = amount;
       return transaction.save();
-    })  
+    })
     .then((result) => {
       transporter.sendMail({
         from: '"XYZBanking" xyzbanking@gmail.com', // sender address
@@ -265,7 +266,7 @@ export const makeTranscationUsingPhoneNo = async (req, res, next) => {
         .json({ message: "transcation made successfully!", result: result });
     })
     .catch((err) => {
-      if (!err.statusCode) {  
+      if (!err.statusCode) {
         err.statusCode = 500;
       }
       next(err);

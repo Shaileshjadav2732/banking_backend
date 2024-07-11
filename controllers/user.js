@@ -72,7 +72,7 @@ export const register = async (req, res, next) => {
       type: "pkcs8",
       format: "der",
     });
-              
+
     console.log(phoneNo.toString());
     const sign = crypto.createSign("SHA256");
     sign.update(phoneNo.toString());
@@ -123,7 +123,7 @@ export const register = async (req, res, next) => {
       password: hashedpassword,
       verified: false,
     }).then((result) => {
-      console.log(result);
+      // console.log(result);
       // const d = (req.session.myData = result._id);
       // console.log(req.session.myData);
       sendOtp(result, res, next, signature);
@@ -135,11 +135,11 @@ export const register = async (req, res, next) => {
 };
 
 //send otp verification email
-const sendOtp = async ({ _id, email }, res, next, signature) => { 
+const sendOtp = async ({ _id, email }, res, next, signature) => {
   try {
     const otp = `${Math.floor(100000 + Math.random() * 900000)}`;
     const mailOptions = {
-      from: "banking@gmail.com",  
+      from: "banking@gmail.com",
       to: email,
       subject: "Verify Your Email",
       html: ` <p style={{ color: "red" }}>
@@ -193,15 +193,13 @@ export const verifyotp = async (req, res, next) => {
       return next(new ErrorHandler("Empty otp details are not allowed!", 400));
     } else {
       const OtpVerificationRecords = await OtpVerification.find({ userId });
-
-      
       if (!OtpVerificationRecords) {
-          return next(  
-            new ErrorHandler(
-              "Account record doesn't exist or has been verified already . Please sign up or logIn!",
-              400
-            )
-          );
+        return next(
+          new ErrorHandler(
+            "Account record doesn't exist or has been verified already . Please sign up or logIn!",
+            400
+          )
+        );
       } else {
         const { expiresAt } = OtpVerificationRecords[0];
         const hashedOtp = OtpVerificationRecords[0].otp;
@@ -258,9 +256,8 @@ export const login = async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
-    
     const user = await User.findOne({ email: email });
-
+if(!user) return next(new ErrorHandler("User Not Found",400))
     const isEqual = await bcrypt.compare(password, user.password);
 
     if (!isEqual) {
@@ -316,7 +313,6 @@ export const completeProfile = async (req, res, next) => {
     const hashedUPI = await bcrypt.hash(upipin, 10);
 
     const user = await User.findOne({ _id: userId });
-    
     user.name = name;
     user.address = address;
     user.dob = dob;

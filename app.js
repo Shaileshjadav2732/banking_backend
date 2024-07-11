@@ -48,7 +48,7 @@ app.use("/images", express.static(path.join(__dirname, "images")));
 
 
 app.use((err, req, res, next) => {
-  if (err instanceof multer.MulterError) {  
+  if (err instanceof multer.MulterError) {
     res.status(400).json({ error: 'File upload error', message: err.message });
   } else {
     next(err);
@@ -63,7 +63,7 @@ config({
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "*", //we can give specific domain , that only take accept the request from that specific domain
-    methods: ["GET", "PUT", "DELETE", "POST", "PATCH"],
+    methods: ["GET", "PUT", "DELETE", "POST","PATCH"],
     credentials: true, //for get header details like cookie...
     allowedHeaders: ["Content-Type", "Authorization"],
   })
