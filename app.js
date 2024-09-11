@@ -72,16 +72,12 @@ app.use(
 // Set up express-session middleware
 app.use(
   session({
-    secret: "parth", // Use a random string for better security
+    secret: "shailesh", // Use a random string for better security
     resave: false,
     saveUninitialized: false,
   })
 );
 
-//made prefix route so now we not have to write again and again same path for user/...
-app.use("/users", userRouter);
-app.use("/admin", adminRouter);
-app.use("/transaction", transactionRoutes);
 
 export const transporter = nodemailer.createTransport({
   service: "Gmail",

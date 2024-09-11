@@ -56,7 +56,7 @@ const verifySign = (userId, publicKey, signature) => {
     format: "der",
   });
 
-  const verify = crypto.createVerify("SHA256");
+  const verify = crypto.createVerify("SHA256"); 
   verify.update(userId.toString());
   verify.end();
 
